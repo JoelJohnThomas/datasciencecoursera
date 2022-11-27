@@ -82,9 +82,11 @@ merged_df_extr <- merged_df[,grep(pattern = "mean\\()|std\\()|Subject.Id|Activit
 merged_df_grouped <- group_by(merged_df_extr, Subject.Id, Activity)
 merge_df_group_summarised <- summarise_all(merged_df_grouped, mean)
 
-#Writing 2 dataframes to a csv file
+#Writing 2 dataframes to a csv file and answer dataset to a txt file
 write.csv(x = merged_df_extr, file = "merged_dataframe.csv")
 write.csv(x = merge_df_group_summarised, file = "merged_dataframe_grouped_and_summarised.csv")
+
+write.table(x = merge_df_group_summarised, file = "merged_dataframe_grouped_and_summarised.txt", row.names = FALSE)
 
 
 
