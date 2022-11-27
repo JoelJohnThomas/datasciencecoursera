@@ -1,0 +1,81 @@
+---
+title: "Codebook"
+output: github_document    
+---
+
+## Project Description
+This Project was focussed on downloading an untidy dataset from the internet and to get it to be made into a tidy dataset
+
+## Study design and data processing
+The raw data was downloaded from the url https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+
+It was downloaded, then read into separate dataframes.The separate dataframes were combined into one single dataframe and columns subsetted to include only the columns that contained mean and standard deviation of the variables. 
+
+After this, appropriate labels were added to the relevant columns and rows. Lastly, the tidy dataframe was grouped by 2 variables and mean applied groupwise on all the other variables
+
+### Collection of the raw data
+
+Description of how the data was collected.
+The raw data was downloaded from the url https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+
+See https://github.com/JoelJohnThomas/datasciencecoursera/blob/main/project_getting_cleaning_data/Readme.md for details
+
+
+### Guide to create the tidy data file
+
+1.Download the raw data, you will get a zipped file. Unzip it to its component files. Out of the extracted files, 6 are contributing to the making of the tidy dataframe
+
+2. See few lines of the file to understand what type of file it is (csv, fixed width file, txt, etc)
+
+3.Read the files into dataframes using appropriate functions
+
+4.Combine the separate dataframes into one dataframe
+
+5.Using appropriate methods, label the data set with descriptive variable names.
+
+6.Write the dataset obtained to a csv file
+
+7.Obtain another dataset which has grouped mean taken on its variables and write the resultant dataset to a csv file
+
+### Cleaning of the data
+
+
+
+See lines 64 to 77 of the url  https://github.com/JoelJohnThomas/datasciencecoursera/blob/main/project_getting_cleaning_data/Readme.md
+
+## Description of the variables in the tiny_data.txt file
+
+General description of the file including:
+ - Dimensions of the dataset
+ - Summary of the data
+ - Variables present in the dataset
+
+
+
+```{r variables in the dataset}
+df <- read.csv(file = "merged_dataframe.csv", header = TRUE)
+names(df)
+dim(df)
+summary(df)
+
+```
+
+
+
+
+### Variables in the dataset
+
+Variables are normalized and bounded within [-1,1]
+
+
+
+```{r table for variables}
+var <- names(df)
+classes <- class(names(df))
+
+print(data.frame(var, classes))
+
+```
+
+
+
