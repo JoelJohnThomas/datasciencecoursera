@@ -1,0 +1,172 @@
+---
+title: "Getting and cleaning Data- Readme"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This document contains scripts and data for a project as a part of the course 'Getting and Cleaning Data' on coursera.
+Purpose of this document is to demonstrate how a messy data downloaded from the internet is converted to a messy dataset
+
+## Methods
+
+The whole process is achieved by using libraries shown below
+
+```{r load_libs, error=TRUE, warning=FALSE, message=FALSE}
+library(plyr)
+library(dplyr)
+```
+
+The raw data is downloaded from the internet url https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip 
+
+
+```{r download}
+#Downloading the data from internet and unzipping zipped folder
+
+downloadfile.url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+downloadfile.dir <- "UCI HAR Dataset"
+downloadfile.file <- "Dataset.zip"
+
+
+if (!file.exists(paste(downloadfile.dir,downloadfile.file, sep = "/"))) {
+  download.file(url = downloadfile.url, destfile = paste(downloadfile.dir,downloadfile.file, sep = "/") )
+}
+
+downloadfile.path <- paste(downloadfile.dir,downloadfile.file, sep = "/")
+
+unzip(downloadfile.path)
+
+```
+
+
+In order to read first few lines of the txt files, we create a list of file paths and do an sapply over the list using readLines function
+
+```{reading lines}
+
+#Reading lines of the text file
+
+pathlist <- list(
+  train.subject = file.path(downloadfile.dir, "train", "subject_train.txt"),
+  train.x = file.path(downloadfile.dir, "train", "X_train.txt"),
+  train.y = file.path(downloadfile.dir, "train", "y_train.txt"),
+  test.subject = file.path(downloadfile.dir, "test", "subject_test.txt"),
+  test.x = file.path(downloadfile.dir, "test", "X_test.txt"),
+  test.y = file.path(downloadfile.dir, "test", "y_test.txt")
+)
+
+lines <- sapply(pathlist, readLines, n=10)
+
+```
+
+The subject file and the y file have single column data and hence can be read into a dataframe with read.delim() function.
+The x file has a fixed width format as it appears in the readLines
+
+```{checking width} 
+
+field_width.train <- sapply(lines[,2], nchar,USE.NAMES = FALSE)/561
+field_width.test <- sapply(lines[,5], nchar,USE.NAMES = FALSE)/561
+all(field_width.train == field_width.test)
+field_width <- field_width.test[1]
+
+```
+
+The field_width has a value of 16 and we can conclude that the x files are fixed width files and can be read into a dataframe using read.fwf() function and the other 4 files using read.delim() function
+
+```{reading files into separate dataframes}
+#Reading files into separate dataframes
+
+df1 <- read.delim(file.path(downloadfile.dir, "train", "subject_train.txt"), sep="", col.names = "Subject Id", colClasses = "factor", header = FALSE)
+df2 <- read.delim(file.path(downloadfile.dir, "test", "subject_test.txt"), sep="", col.names = "Subject Id", colClasses = "factor", header = FALSE)
+df3 <- read.delim(file.path(downloadfile.dir, "train", "y_train.txt"), sep="", col.names = "Activity", colClasses = "factor", header = FALSE)
+df4 <- read.delim(file.path(downloadfile.dir, "test", "y_test.txt"), sep="", col.names = "Activity", colClasses = "factor", header = FALSE)
+df5 <- read.fwf(file.path(downloadfile.dir, "train", "X_train.txt"),widths=rep(field_width,561), header=FALSE, colClasses="numeric")
+df6 <- read.fwf(file.path(downloadfile.dir, "test", "X_test.txt"),widths=rep(field_width,561), header=FALSE, colClasses="numeric")
+
+
+
+```
+
+Now, we need to see the dimensions of the loaded dataframes to determine how the binding of rows and columsn must take place
+
+```{checking dim of dataframes}
+#Seeing dimensions of the loaded dataframes
+
+dim(df6)
+dim(df5)
+dim(df4)
+dim(df3)
+dim(df2)
+dim(df1)
+
+```
+
+
+Based on the above output, we u derstand the subject, x and y dataframes should be combined horizontally. The train and test  dataframes vertically
+
+```{merging dataframes}
+#Merging the 6 dataframes to one dataframe
+
+merged_df <- bind_rows(bind_cols(df1,df3,df5), bind_cols(df2,df4,df6))
+
+```
+
+Now, we need to replace the values in column 2 of the merged_df with the associated activity name mentioned in activity_labels.txt
+
+```{mapping values of activity_labels.txt}
+
+#Changing Activity number to Activity name
+activity_label_df <- read.delim(file.path(downloadfile.dir,"activity_labels.txt"), sep=" ", col.names=c("Activityid", "Activityname"), colClasses = c("factor","character"), header=FALSE)
+activity_label_df <-  mutate(activity_label_df,Activityname = tolower(gsub("_", " ", Activityname)))
+merged_df$Activity <- mapvalues(x = merged_df$Activity, from = activity_label_df$Activityid, to = activity_label_df$Activityname)
+
+```
+
+
+Now, we need to replace the column names of the dataframe with variables mentioned in features.txt
+
+```{mapping variable names from features.txt}
+
+#Bringing names of measured variables to consolidated dataframe
+features_df <- read.delim(file.path(downloadfile.dir,"features.txt"), sep = " ", col.names = c("featureid", "featurename"), colClasses = c("numeric","character"), header = FALSE)
+features_df$featureid <- paste0("V",features_df$featureid)
+var_names <- features_df$featurename
+names(merged_df)[-c(1,2)] <- var_names
+
+```
+
+Next, we filter for only the subjectid, activity, mean and standard deviation of measured variables using code shown below. 
+
+```{extracting only mean , standard deviation , subject id and activity variables}
+
+#Filtering for only mean and standard deviation for measured variables
+merged_df_extr <- merged_df[,grep(pattern = "mean\\()|std\\()|Subject.Id|Activity", names(merged_df))]
+
+```
+
+Now we have reached step 4 mentioned in the Project guidelines
+
+Next step is to take grouped mean on subject and activity. For this, we use group_by and summarise_all functions
+
+```{taking grouped mean of all variables}
+
+#Creating grouped mean
+merged_df_grouped <- group_by(merged_df_extr, Subject.Id, Activity)
+merge_df_group_summarised <- summarise_all(merged_df_grouped, mean)
+
+```
+
+Next step is writing 2 dataframes (mentioned in step 4 and step 5 of project guideline) to a csv file
+
+```{writing dataframes to a csv file}
+
+#Writing 2 dataframes to a csv file
+write.csv(x = merged_df_extr, file = "merged_dataframe.csv")
+write.csv(x = merge_df_group_summarised, file = "merged_dataframe_grouped_and_summarised.csv")
+
+```
+
+
